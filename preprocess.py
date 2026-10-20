@@ -30,7 +30,6 @@ def tokenize_function(example):
         padding="max_length"
     )
 
-    # Ignore padding tokens when calculating the loss
     labels["input_ids"] = [
         [
             token if token != tokenizer.pad_token_id else -100

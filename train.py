@@ -17,19 +17,15 @@ from config import (
 )
 
 
-# 1. Select device
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device:", device)
 
-# 2. Load dataset
 dataset = load_dataset(DATASET_NAME)
 print(dataset)
 
-# 3. Load pretrained model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 base_model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
 
-# 4. Tokenize dialogues and summaries
 def tokenize_function(example):
     prompts = [
         "Summarize the following conversation:\n\n"
@@ -69,14 +65,16 @@ tokenized_datasets = dataset.map(
     remove_columns=dataset["train"].column_names,
 )
 
-# 5. Start with a small subset to test the training pipeline
 train_data = tokenized_datasets["train"].select(
     range(min(500, len(tokenized_datasets["train"])))
 )
+eval_data = tokenized_datasets["validation"].select(
+    range(min(100, len(tokenized_datasets["validation"])))
+)
 
 print("Training examples:", len(train_data))
+print("Validation examples:", len(eval_data))
 
-# 6. Apply LoRA
 lora_config = LoraConfig(
     task_type=TaskType.SEQ_2_SEQ_LM,
     r=8,
@@ -88,7 +86,6 @@ lora_config = LoraConfig(
 peft_model = get_peft_model(base_model, lora_config)
 peft_model.print_trainable_parameters()
 
-# 7. Configure training
 training_args = TrainingArguments(
     output_dir="./peft-dialogue-summary-training",
     learning_rate=1e-3,
@@ -97,23 +94,28 @@ training_args = TrainingArguments(
     gradient_accumulation_steps=8,
     fp16=torch.cuda.is_available(),
     logging_steps=10,
-    save_strategy="epoch",
-    save_total_limit=1,
-    report_to="none",
+    eval_strategy="steps",
+    eval_steps=20,
+    save_strategy="steps",
+    save_steps=20,
+    save_total_limit=2,
+    load_best_model_at_end=True,
+    metric_for_best_model="eval_loss",
+    greater_is_better=False,
+    logging_dir="./runs/peft-dialogue-summary",
+    report_to="tensorboard",
     dataloader_pin_memory=torch.cuda.is_available(),
 )
 
-# 8. Create trainer
 trainer = Trainer(
     model=peft_model,
     args=training_args,
     train_dataset=train_data,
+    eval_dataset=eval_data,
 )
 
-# 9. Train
 trainer.train()
 
-# 10. Save the LoRA adapter and tokenizer
 output_path = "./peft-dialogue-summary-checkpoint-local"
 
 peft_model.save_pretrained(output_path)
