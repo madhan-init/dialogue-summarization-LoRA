@@ -28,7 +28,6 @@ base_model, tokenizer = get_model_and_tokenizer()
 print("\n--- Model Parameters ---")
 print(print_number_of_trainable_model_parameters(base_model))
 
-# Baseline inference
 i = 20
 dialogue = dataset["test"][i]["dialogue"]
 summary = dataset["test"][i]["summary"]

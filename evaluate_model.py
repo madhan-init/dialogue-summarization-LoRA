@@ -13,7 +13,6 @@ NUM_EXAMPLES = 20
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device:", device)
 
-# Load the fine-tuned LoRA model
 tokenizer = AutoTokenizer.from_pretrained(ADAPTER_PATH)
 
 model = AutoPeftModelForSeq2SeqLM.from_pretrained(
@@ -23,7 +22,6 @@ model = AutoPeftModelForSeq2SeqLM.from_pretrained(
 model = model.to(device)
 model.eval()
 
-# Load test data
 dataset = load_dataset(DATASET_NAME)
 test_data = dataset["test"].select(
     range(min(NUM_EXAMPLES, len(dataset["test"])))
@@ -32,7 +30,6 @@ test_data = dataset["test"].select(
 predictions = []
 references = []
 
-# Generate summaries
 for i, example in enumerate(test_data):
     prompt = (
         "Summarize the following conversation:\n\n"
@@ -68,7 +65,6 @@ for i, example in enumerate(test_data):
         print("Reference:", example["summary"])
         print("Generated:", prediction)
 
-# Calculate ROUGE scores
 rouge = evaluate.load("rouge")
 scores = rouge.compute(
     predictions=predictions,
